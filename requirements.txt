@@ -1,0 +1,5 @@
+pandas
+agno
+googlesearch-python 
+pycountry
+lancedb
