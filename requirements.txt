@@ -3,3 +3,9 @@ agno
 googlesearch-python 
 pycountry
 lancedb
+streamlit
+arxiv 
+pypdf
+newspaper4k 
+lxml_html_clean
+streamlit-lottie
