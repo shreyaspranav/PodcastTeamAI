@@ -43,7 +43,7 @@ content_writer_model = groq_model
 
 debug_mode = True
 
-storage_db_file = "temp/shared_memory.db"
+storage_db_file = "temp/shared_storage.db"
 shared_storage = SqliteStorage(table_name="shared_storage", db_file=storage_db_file)
 
 team_memory = Memory(db=shared_storage)
