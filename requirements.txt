@@ -9,5 +9,8 @@ pypdf
 newspaper4k 
 lxml_html_clean
 streamlit-lottie
+groq
+python-dotenv
+sqlalchemy
 google-genai
 ollama

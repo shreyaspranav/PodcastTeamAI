@@ -12,7 +12,10 @@ import numpy as np
 import time
 import re
 import json
+import dotenv
 
+# Load API keys as environmental variables
+dotenv.load_dotenv()
 
 def load_lottie_file(filepath: str):
     with open(filepath, "r") as f:
@@ -57,7 +60,7 @@ if prompt := st.chat_input("Enter a podcast idea..."):
             st_lottie(load_lottie_file("assets/lotte-loading.json"), height=60)
 
         # Step 1: Capture full response
-        response: Iterator[RunResponse] = team.run(prompt, stream=True)
+        response: Iterator[RunResponse] = team.run(prompt, stream=True, session_id="session")
         full_text = ""
         for chunk in response:
             if hasattr(chunk, 'content') and chunk.content:
