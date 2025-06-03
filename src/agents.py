@@ -33,13 +33,15 @@ gemini_model = Gemini(
 )
 
 groq_model = Groq(
-    id = "meta-llama/llama-4-scout-17b-16e-instruct",
+    id = "meta-llama/llama-4-scout-17b-16-16e-instruct",
     temperature = 0.7,
     top_p=0.9
 )
 
 content_strategist_model = gemini_model
-content_writer_model = groq_model
+content_writer_model = gemini_model
+
+summary_agent = gemini_model
 
 debug_mode = True
 
@@ -48,7 +50,16 @@ shared_storage = SqliteStorage(table_name="shared_storage", db_file=storage_db_f
 
 team_memory = Memory(db=shared_storage)
 
-def get_content_strategist_agent():
+def get_summary_agent(session_id: str):
+    return Agent(
+        model=gemini_model,
+        instructions=dedent("""\
+            Your job is to summarize given text in 5 words or less.
+            The format of the response should not contain anything but the summary.
+        """)
+    )
+
+def get_content_strategist_agent(session_id: str):
     return Agent(
         name = "Topic Strategist Agent",
         description = dedent("""\
@@ -65,6 +76,8 @@ def get_content_strategist_agent():
         ],
         storage=shared_storage,
         add_history_to_messages=True,
+        memory=team_memory,
+
         instructions = dedent("""\
             You are seasoned content strategist for podcasts with deep and comprehensive expertise
             in strategically analysing the current trend in the market and suggesting a handful of niche topics
@@ -80,7 +93,7 @@ def get_content_strategist_agent():
             - Suggest any number of podcast topics that the prompt tells you to do. If not mentioned, suggest 5.
             - For each topic, make a 2 sentence desciption and justification of the topic in terms of how audience will react. 
                 - Use the following format for each:
-                    ## Topic {number}: <title>
+                    # Topic {number}: <title>
                     - **Description**: <description>
                     - **Justification**: <justification>
             
@@ -91,7 +104,7 @@ def get_content_strategist_agent():
         debug_mode = debug_mode,
     )
 
-def get_content_writer_agent():
+def get_content_writer_agent(session_id: str):
     return Agent(
         name = "Content Writer Agent",
         description = dedent("You are an experienced script writer for a podcast."),
@@ -104,6 +117,7 @@ def get_content_writer_agent():
 
         storage=shared_storage,
         add_history_to_messages=True,
+        memory=team_memory,
 
         instructions = dedent("""
             You are an experienced script writer for a podcast. You write podcasts with deep knowledge of
@@ -136,10 +150,10 @@ def get_content_writer_agent():
         show_tool_calls = True
     )
 
-def get_agent_team():
+def get_agent_team(session_id: str):
     return Team(
         name = "PodcastAI Agent Team",
-        members = [get_content_strategist_agent(), get_content_writer_agent()],
+        members = [get_content_strategist_agent(session_id), get_content_writer_agent(session_id)],
         mode = "route",
         debug_mode=True,
         markdown=True,
@@ -150,6 +164,9 @@ def get_agent_team():
         storage=shared_storage,
         enable_team_history = True,
         num_of_interactions_from_history=10,  # Increased to capture more context
+
+        session_id=session_id,
+        session_state={"session_id": session_id},
 
         instructions = dedent("""\
             You are the lead Podcast director responsible for classifiying and routing inquiries.
