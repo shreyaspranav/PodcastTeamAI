@@ -12,6 +12,8 @@ from agno.tools.googlesearch import GoogleSearchTools
 from agno.tools.reasoning import ReasoningTools
 from agno.tools.arxiv import ArxivTools
 from agno.tools.newspaper4k import Newspaper4kTools
+from agno.tools.cartesia import CartesiaTools
+from agno.utils.audio import write_audio_to_file
 
 from agno.memory.v2.memory import Memory
 from agno.storage.sqlite import SqliteStorage
@@ -40,6 +42,8 @@ groq_model = Groq(
 
 content_strategist_model = gemini_model
 content_writer_model = gemini_model
+content_caption_writer_model = gemini_model
+voice_agent_model = gemini_model
 
 summary_agent = gemini_model
 
@@ -98,6 +102,7 @@ def get_content_strategist_agent(session_id: str):
                     - **Justification**: <justification>
             
             IMPORTANT: Always number your topics clearly (1, 2, 3, etc.) so they can be referenced later.
+            IMPORTANT: Just reply the topics requested, do not include the chain of thoughts in the response
         """),
         markdown = True,
         show_tool_calls = True,
@@ -144,8 +149,63 @@ def get_content_writer_agent(session_id: str):
                               
             If the prompt asks for a different structure, strictly follow that while providing suggestions to make it better 
             at the end.
+            IMPORTANT: Just reply the topics requested, do not include the chain of thoughts in the response
         """),
         markdown = True,
+        debug_mode = True,
+        show_tool_calls = True
+    )
+
+
+def get_content_caption_writer_agent(session_id: str):
+    return Agent(
+        name = "Caption Writer Agent",
+        description = dedent("You are an experienced caption writer advertising podcasts in social media."),
+        model = content_caption_writer_model,
+
+        storage=shared_storage,
+        add_history_to_messages=True,
+        memory=team_memory,
+
+        instructions = dedent("""
+            You are an experienced caption writer advertising podcasts in social media.
+            IMPORTANT: When asked to write a caption for a numbered topic (like "3rd topic"), first check the conversation
+            history to see what topics were previously suggested, then write the caption for the specified topic.
+            
+            The caption for the podcast is required to be:
+            - Completely error free, doesn't spoil the actual podcast script but still gives a "hint" to it.
+            - Catchy, should be visually appealing for social media usecases. Use emojis to make it more lively
+            - Start with a great hook in the beginning to ensure high click rate
+            - Should have a perfect length to be posted as a caption for a post in instagram, twitter or youtube.
+            - Make sure that the caption is not cluttered, use indentation if possible
+            
+            IMPORTANT: Just reply the topics requested, do not include the chain of thoughts in the response
+        """),
+        markdown = True,
+        debug_mode = True,
+        show_tool_calls = True
+    )
+
+def get_voice_agent(session_id: str):
+    return Agent(
+        name = "Text to Speech agent",
+        description = dedent("Text to speech"),
+        model = voice_agent_model,
+        tools = [CartesiaTools()],
+
+        storage=shared_storage,
+        add_history_to_messages=True,
+        memory=team_memory,
+
+        instructions = dedent("""
+            You are an Text-To-Speech agent that is reponsible to generating audio files from a given podcast script.
+
+            Strip out the unnessary parts of the script that are usually not required to be spoken like the titles, index or table of contents etc. 
+            from the text that are to be converted to speech                  
+                              
+            IMPORTANT: Make sure to generate only one audio file containing the entire script.
+            
+        """),
         debug_mode = True,
         show_tool_calls = True
     )
@@ -153,7 +213,12 @@ def get_content_writer_agent(session_id: str):
 def get_agent_team(session_id: str):
     return Team(
         name = "PodcastAI Agent Team",
-        members = [get_content_strategist_agent(session_id), get_content_writer_agent(session_id)],
+        members = [
+            get_content_strategist_agent(session_id), 
+            get_content_writer_agent(session_id), 
+            get_content_caption_writer_agent(session_id),
+            get_voice_agent(session_id)
+        ],
         mode = "route",
         debug_mode=True,
         markdown=True,
@@ -173,9 +238,16 @@ def get_agent_team(session_id: str):
             Carefully analyse each inquiry and determine if it is:
             - a Podcast topic suggestion
             - a Podcast script suggestion
+            - a Podcast caption suggestion
+            - a Podcast audio suggesion
                               
             - For topic suggession inquiries, route to the topic strategist agent
             - For script suggestion inquiries, route to the content writer agent. 
+            - For caption suggession inquiries, route to the caption writer agent
+            - For audio suggestion inquiries, route to the text to speech agent. 
+                              
+            IMPORTANT: When routing to the text to speech agent, forward the RAW podcast script text from history
+            to the text to speech agent as its expexted output so that it gets context to create audio files. 
 
             IMPORTANT CONTEXT HANDLING:
             - When users reference numbered topics (like "3rd topic", "topic 2", etc.), this means they're referring 
@@ -192,19 +264,47 @@ def get_agent_team(session_id: str):
 
             Always provide a clear explanation of why you're routing the inquiry to a specific agent. 
             Ensure a seamless experience for the user by maintaining context throughout the conversation.
+                              
+            IMPORTANT: Just reply the topics requested, do not include the chain of thoughts in the response and only forward the 
+            response of the member agents and do not include your own response.
         """)
     )
 
 if __name__ == "__main__":
-    team = get_agent_team()
+
+    import dotenv
+    dotenv.load_dotenv()
+    # team = get_agent_team()
     
-    print("=== First Request: Getting Topics ===")
-    team.print_response("Suggest 5 podcast topics about tech trends.", stream=True, stream_intermediate_steps=True)
+    # print("=== First Request: Getting Topics ===")
+    # team.print_response("Suggest 5 podcast topics about tech trends.", stream=True, stream_intermediate_steps=True)
     
-    print("\n" + "=" * 100)
-    print("=== Storage Sessions ===")
-    print(shared_storage.get_all_sessions())
+    # print("\n" + "=" * 100)
+    # print("=== Storage Sessions ===")
+    # print(shared_storage.get_all_sessions())
     
-    print("\n" + "=" * 100)
-    print("=== Second Request: Script for 3rd Topic ===")
-    team.print_response("Write a podcast script for the 3rd topic you mentioned.", stream=True, stream_intermediate_steps=True)
+    # print("\n" + "=" * 100)
+    # print("=== Second Request: Script for 3rd Topic ===")
+    # team.print_response("Write a podcast script for the 3rd topic you mentioned.", stream=True, stream_intermediate_steps=True)
+
+
+    # print(car.list_voices())
+
+    # sample = dedent("""
+    #     Convert the following in to audio. Use different voices for different characters. Return one audio file containing the whole script.
+        
+    #     \"HHey everyone, welcome back to Mind Minutes. I'm Sam, and today we're diving into a question we've all asked ourselves: Why do I keep procrastinating?
+    #     Here's the truth — procrastination isn't laziness. It's often fear. Fear of failure, of imperfection, or even of success. Crazy, right?
+    #     Your brain seeks short-term comfort over long-term progress. That's why scrolling feels easier than starting that big project.
+    #     So here's one tip that works: set a 5-minute timer. Tell yourself you only have to start. Once you do, momentum kicks in.
+    #     That's it for today. Tiny steps, big change.
+    #     Catch you in the next episode of Mind Minutes.\"
+    # """)
+
+    # response = get_voice_agent("fdsafds").run(sample)
+    # if response.audio:
+    #     for i in range(len(response.audio)):
+    #         write_audio_to_file(
+    #             response.audio[i].base64_audio,
+    #             filename=f"sample_sample{i}.mp3",
+    #         )

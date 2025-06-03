@@ -7,6 +7,7 @@ from agno.utils.pprint import pprint_run_response
 
 from agno.memory.v2.memory import Memory
 from agno.storage.sqlite import SqliteStorage
+from agno.utils.audio import write_audio_to_file
 
 import streamlit as st
 from streamlit_lottie import st_lottie
@@ -105,8 +106,14 @@ def render_sidebar():
 def restore_session():
     st.title("PodcastAI.")
     for message in st.session_state['messages']:
+        if isinstance(message['content'], list) and not message['content']:
+            continue
         with st.chat_message(message['role']):
-            st.markdown(message['content'])
+            if isinstance(message['content'], str):
+                st.markdown(message['content'])
+            elif isinstance(message['content'], list):
+                for audio_file in message['content']:
+                    st.audio(audio_file, format="audio/mpeg")
 
 # Chat input
 def render_body():
@@ -124,6 +131,7 @@ def render_body():
                 break
 
         # assistant response
+        audio_files = []
         with st.chat_message("assistant"):
             placeholder = st.empty()
             cursor_placeholder = st.empty()
@@ -131,25 +139,38 @@ def render_body():
             with cursor_placeholder:
                 st_lottie(load_json("assets/lotte-loading.json"), height=60)
 
-            response: Iterator[RunResponse] = team.run(
+            response: RunResponse = team.run(
                 prompt,
-                stream=True,
+                stream=False,
                 session_id=st.session_state['current_session_id']
             )
             full_text = ""
-            for chunk in response:
-                if hasattr(chunk, 'content') and chunk.content:
-                    full_text += chunk.content
-                    placeholder.markdown(strip_think_sections(full_text))
-                    time.sleep(0.005)
+            # for chunk in response:
+            # if hasattr(response, 'content') and chunk.content:
+            if response.content:
+                full_text += response.content
+                placeholder.markdown(strip_think_sections(full_text))
+            if response.audio:
+                print("jfdsa;teiowafdjsakfhuaufosafjdsa--------- Audio len: ", len(response.audio))
+                for i in range(len(response.audio)):
+                    write_audio_to_file(
+                        response.audio[i].base64_audio,
+                        filename=f"temp/{st.session_state['current_session_id']}_{i}.mp3"
+                    )
+                    st.audio(f"temp/{st.session_state['current_session_id']}_{i}.mp3", format="audio/mpeg")
+                    audio_files.append(f"temp/{st.session_state['current_session_id']}_{i}.mp3")
+                    
 
             cursor_placeholder.empty()
 
-        assistant_entry = {"role": "assistant", "content": strip_think_sections(full_text)}
-        st.session_state['messages'].append(assistant_entry)
+        assistant_entry_1 = {"role": "assistant", "content": strip_think_sections(full_text)}
+        assistant_entry_2 = {"role": "assistant", "content": audio_files}
+        st.session_state['messages'].append(assistant_entry_1)
+        st.session_state['messages'].append(assistant_entry_2)
         for sess in session_conversation_data['sessions']:
             if sess['session_id'] == st.session_state['current_session_id']:
-                sess['messages'].append(assistant_entry)
+                sess['messages'].append(assistant_entry_1)
+                sess['messages'].append(assistant_entry_2)
                 break
 
         current_session = next(s for s in session_conversation_data['sessions']

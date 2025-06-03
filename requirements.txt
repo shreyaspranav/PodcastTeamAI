@@ -14,3 +14,4 @@ python-dotenv
 sqlalchemy
 google-genai
 ollama
+cartesia
