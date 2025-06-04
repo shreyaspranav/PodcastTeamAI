@@ -24,7 +24,7 @@ import secrets
 dotenv.load_dotenv()
 conversations_file = "temp/conversations.json"
 
-# Helper functions:
+# Helper functions: --------------------------------------------------------------------------------------------------
 def load_json(filepath: str):
     with open(filepath, 'r') as f:
         return json.load(f)
@@ -39,6 +39,7 @@ EMPTY_SESSIONS_DATA = {"sessions": []}
 
 # Ensure directory exists
 os.makedirs(os.path.dirname(conversations_file), exist_ok=True)
+# Session Data ------------------------------------------------------------------------------------------------------
 
 # Load or initialize sessions data
 if not os.path.exists(conversations_file):
@@ -75,7 +76,7 @@ def switch_session():
             st.session_state['summary'] = sess.get('summary', "No Summary")
             break
 
-# UI
+# UI -------------------------------------------------------------------------------------------------------------------------
 def render_sidebar():
     with st.sidebar:
         st.title("**PodcastAI.**")
@@ -115,7 +116,6 @@ def restore_session():
                 for audio_file in message['content']:
                     st.audio(audio_file, format="audio/mpeg")
 
-# Chat input
 def render_body():
     if prompt := st.chat_input("Enter a podcast idea..."):
         # display user

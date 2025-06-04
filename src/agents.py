@@ -228,7 +228,7 @@ def get_agent_team(session_id: str):
         memory=team_memory,
         storage=shared_storage,
         enable_team_history = True,
-        num_of_interactions_from_history=10,  # Increased to capture more context
+        num_of_interactions_from_history=10,
 
         session_id=session_id,
         session_state={"session_id": session_id},
