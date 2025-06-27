@@ -11,6 +11,21 @@ There are 4 different agents that does the above jobs respectfully. Each agent h
 
 The web interface is built using [Streamlit](https://streamlit.io)
 
+## Usage
+
+- Create a copy of `model.env` and rename it `.env`
+- Get your own API keys from **Google Cloud, Groq Cloud** and **Cartesia** and add them in the .env file like this:
+```
+GOOGLE_API_KEY=xxx
+GROQ_API_KEY=xxx
+CARTESIA_API_KEY=xxx
+```
+- Run the app using:
+``` shell
+streamlit run src/main.py
+```
+
+
 ## Screenshots
 
 ![Screenshot 1](assets/screenshots/1.png)

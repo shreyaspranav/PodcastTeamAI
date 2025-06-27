@@ -20,6 +20,7 @@ from agno.storage.sqlite import SqliteStorage
 
 from agno.team import Team
 
+# Configure models here: ---------------------------------------------------------------
 ollama_model = Ollama(
     id = "qwen3:1.7b",
     options = {
@@ -46,6 +47,8 @@ content_caption_writer_model = gemini_model
 voice_agent_model = gemini_model
 
 summary_agent = gemini_model
+
+# ---------------------------------------------------------------------------------------
 
 debug_mode = True
 
